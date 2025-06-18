@@ -1,1 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Search</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f0f0; min-height: 100vh; }
+        .anime-card { transition: transform 0.2s; background-color: white; cursor: pointer; }
+        .anime-card:hover { transform: translateY(-5px); }
+        .search-container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+        .anime-image { height: 300px; object-fit: cover; }
+        .modal-genres { margin: 0.25rem; }
+        #networkStatus { 
+            display: none; 
+            position: sticky;
+            top: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-container">
+            <div id="networkStatus" class="alert mt-3 fade show">
+                <span class="status-message"></span>
+            </div>
+            
+            <h1 class="text-center mb-4">Luminux Anime Search</h1>
+            <div class="input-group mb-4">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search for anime...">
+                <button class="btn btn-primary" onclick="searchAnime()">Search</button>
+            </div>
+            
+            <!-- Random Anime Section -->
+            <div id="randomAnime" class="row g-4"></div>
+            
+            <!-- Search Results Section -->
+            <div id="results" class="row g-4" style="display: none;"></div>
+        </div>
+    </div>
 
+    <!-- Anime Details Modal -->
+    <div class="modal fade" id="animeModal" tabindex="-1">
+        <!-- ... (keep the existing modal content) ... -->
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize with random anime
+        function fetchRandomAnime() {
+            fetch('https://api.jikan.moe/v4/top/anime')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('randomAnime');
+                    container.innerHTML = '';
+                    
+                    // Get 6 random anime from top list
+                    const randomAnime = data.data.sort(() => 0.5 - Math.random()).slice(0, 6);
+                    
+                    randomAnime.forEach(anime => {
+                        const animeData = JSON.stringify(anime);
+                        container.innerHTML += `
+                            <div class="col-12 col-md-6 col-lg-4">
+                                <div class="card anime-card h-100" 
+                                     onclick="showAnimeDetails('${btoa(unescape(encodeURIComponent(animeData)))}')">
+                                    <img src="${anime.images.jpg.image_url}" class="card-img-top anime-image" alt="${anime.title}">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${anime.title}</h5>
+                                        <p class="card-text text-muted">${anime.synopsis?.substring(0, 100) || 'No description available'}...</p>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="badge bg-primary">Episodes: ${anime.episodes || 'N/A'}</span>
+                                            <span class="badge bg-success">Score: ${anime.score || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                })
+                .catch(error => console.error('Error fetching random anime:', error));
+        }
+
+        function searchAnime() {
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            const resultsContainer = document.getElementById('results');
+            const randomContainer = document.getElementById('randomAnime');
+            
+            if (!searchTerm) {
+                alert('Please enter a search term');
+                return;
+            }
+
+            // Hide random anime and show results container
+            randomContainer.style.display = 'none';
+            resultsContainer.style.display = 'block';
+            resultsContainer.innerHTML = '<div class="text-center">Loading...</div>';
+
+            fetch(`https://api.jikan.moe/v4/anime?q=${searchTerm}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.data.length === 0) {
+                        resultsContainer.innerHTML = '<div class="text-center">No results found</div>';
+                        return;
+                    }
+
+                    let html = '';
+                    data.data.forEach(anime => {
+                        const animeData = JSON.stringify(anime);
+                        html += `
+                            <div class="col-12 col-md-6 col-lg-4">
+                                <div class="card anime-card h-100" 
+                                     onclick="showAnimeDetails('${btoa(unescape(encodeURIComponent(animeData))}')">
+                                    <!-- ... (same card content as random anime) ... -->
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    resultsContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    resultsContainer.innerHTML = '<div class="text-center">Error fetching data</div>';
+                    console.error('Error:', error);
+                });
+        }
+
+        // Initial load
+        window.addEventListener('load', () => {
+            updateNetworkStatus();
+            fetchRandomAnime();
+        });
+
+        // Keep existing showAnimeDetails and network status functions
+        // ... (remaining existing JavaScript code) ...
+    </script>
+</body>
+</html>
